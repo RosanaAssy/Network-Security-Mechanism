@@ -1,0 +1,52 @@
+Run started: 2026-10-30 21:13:48
+Running each scenario 5 time(s). This clears old alerts first.
+Checking Suricata engine is ready ready.
+
+========================================================
+  1. Port scan (nmap SYN)   (watching sid 1000001, expect detection: yes)
+========================================================
+  run 1/5 ... DETECTED (sid 1000001 fired)
+  run 2/5 ... DETECTED (sid 1000001 fired)
+  run 3/5 ... DETECTED (sid 1000001 fired)
+  run 4/5 ... DETECTED (sid 1000001 fired)
+  run 5/5 ... DETECTED (sid 1000001 fired)
+
+========================================================
+  2. SSH brute force (hydra)   (watching sid 1000002, expect detection: yes)
+========================================================
+  run 1/5 ... not detected
+  run 2/5 ... DETECTED (sid 1000002 fired)
+  run 3/5 ... not detected
+  run 4/5 ... DETECTED (sid 1000002 fired)
+  run 5/5 ... not detected
+
+========================================================
+  3. SYN flood (hping3)   (watching sid 1000003, expect detection: yes)
+========================================================
+  run 1/5 ... DETECTED (sid 1000003 fired)
+  run 2/5 ... DETECTED (sid 1000003 fired)
+  run 3/5 ... DETECTED (sid 1000003 fired)
+  run 4/5 ... DETECTED (sid 1000003 fired)
+  run 5/5 ... DETECTED (sid 1000003 fired)
+
+========================================================
+  E. Slow scan (evasion)   (watching sid 1000001, expect detection: no)
+========================================================
+  run 1/5 ... not detected
+  run 2/5 ... not detected
+  run 3/5 ... not detected
+  run 4/5 ... not detected
+  run 5/5 ... not detected
+
+############  RESULTS  ############
+Scenario                     | Runs | Detected | Missed | False alarms 
+-----------------------------+------+----------+--------+--------------
+1. Port scan (nmap SYN)      |    5 |        5 |      0 | 1 (benign client)
+2. SSH brute force (hydra)   |    5 |        2 |      3 | 3 (benign client)
+3. SYN flood (hping3)        |    5 |        5 |      0 | 1 (benign client)
+E. Slow scan (evasion)       |    5 |        0 |      5 | 5 (benign client)
+
+Note: for 'E. Slow scan' DETECTED is the evasion FAILING - you want
+      Detected = 0 there (the slow scan slips under the threshold).
+Full alerts are in EveBox: http://localhost:5636
+Run finished: 2026-10-30 21:27:05

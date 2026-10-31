@@ -1,0 +1,80 @@
+# ISDI 509 mini-project - Suricata IDS lab
+# Start:  docker compose up -d --build
+# Stop:   docker compose down        (add -v to also delete the logs)
+
+name: idslab
+
+networks:
+  # Isolated lab network: "internal" means no route to the internet or the university network.
+  lab-net:
+    internal: true
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-lab   # fixed name so Suricata knows which interface to watch
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  suricata-logs:     # eve.json lives here, shared with EveBox
+  suricata-rules:    # downloaded ET Open rules (kept between restarts)
+  evebox-data:       # EveBox SQLite database
+
+services:
+  # Protected system: SSH server + small web site
+  victim:
+    build: ./victim
+    image: idslab-victim:1.0
+    container_name: victim
+    networks:
+      lab-net:
+        ipv4_address: 172.28.0.10
+
+  # Attack source: nmap, hping3, hydra
+  attacker:
+    build: ./attacker
+    image: idslab-attacker:1.0
+    container_name: attacker
+    cap_add: [NET_RAW, NET_ADMIN]      # nmap -sS and hping3 need raw sockets
+    volumes:
+      - ./attacks:/attacks:ro
+    networks:
+      lab-net:
+        ipv4_address: 172.28.0.20
+
+  # Normal user: browses the web site and logs in over SSH with the right password
+  client:
+    build: ./client
+    image: idslab-client:1.0
+    container_name: client
+    networks:
+      lab-net:
+        ipv4_address: 172.28.0.30
+
+  # Security mechanism: Suricata IDS watching the lab bridge
+  suricata:
+    image: jasonish/suricata:7.0.16
+    container_name: suricata
+    network_mode: host                 # needed to sniff the br-lab bridge on the host
+    cap_add: [NET_ADMIN, NET_RAW, SYS_NICE]
+    command: ["/lab/start.sh"]
+    volumes:
+      - ./suricata:/lab:ro
+      - suricata-logs:/var/log/suricata
+      - suricata-rules:/var/lib/suricata
+    depends_on: [victim, attacker, client]
+
+  # Visualisation: EveBox web dashboard on http://localhost:5636
+  evebox:
+    image: jasonish/evebox:0.29.0
+    container_name: evebox
+    restart: unless-stopped            # eve.json may not exist yet on first boot
+    command: >
+      evebox server --sqlite --no-auth --no-tls --host 0.0.0.0 --port 5636
+      -D /var/lib/evebox --input /var/log/suricata/eve.json
+    ports:
+      - "127.0.0.1:5636:5636"          # only reachable from this laptop
+    volumes:
+      - suricata-logs:/var/log/suricata:ro
+      - evebox-data:/var/lib/evebox
+    depends_on: [suricata]
